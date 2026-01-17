@@ -91,29 +91,52 @@ function extractDarenData(row) {
     // 提取所有表格单元格
     const cells = Array.from(row.querySelectorAll('td.auxo-table-cell'));
     
-    // 提取粉丝数（通常是第一个数字列，不包含¥符号，可能包含ff-barlow类）
+    // 提取粉丝数（通常是第一个数字列，不包含¥符号，可能包含"万"单位）
     let fans = 0;
     // 跳过固定列（选择框列和达人信息列），从第2个单元格开始
-    // 粉丝数通常在达人信息列之后的第一个数字列
+    // 粉丝数通常在达人信息列之后的第一个数字列，带有ff-barlow类
     for (let i = 2; i < Math.min(10, cells.length); i++) {
       const cell = cells[i];
       const cellText = cell.textContent.trim();
       
-      // 检查是否是纯数字或包含数字但没有¥符号、没有"-"符号、没有"万"字
-      if (cellText && !cellText.includes('¥') && !cellText.includes('-') && !cellText.includes('万')) {
-        // 匹配纯数字，可能包含逗号分隔符
-        const fanMatch = cellText.match(/^(\d{1,3}(?:,\d{3})*)$/);
-        if (fanMatch) {
-          // 移除逗号并转换为数字
-          fans = parseInt(fanMatch[1].replace(/,/g, ''), 10) || 0;
-          break;
-        }
-        // 也尝试匹配没有逗号的纯数字
-        const simpleMatch = cellText.match(/^(\d+)$/);
-        if (simpleMatch) {
-          fans = parseInt(simpleMatch[1], 10) || 0;
-          break;
-        }
+      // 检查是否包含¥符号，如果包含则跳过（这是价格列）
+      if (cellText && cellText.includes('¥')) {
+        continue;
+      }
+      
+      // 检查是否包含"-"符号，如果包含则跳过（这是价格范围列）
+      if (cellText && cellText.includes('-') && !cellText.match(/[\d.]+万?[\s-]+[\d.]+万?/)) {
+        continue;
+      }
+      
+      // 匹配纯数字（可能包含逗号）
+      const pureNumberMatch = cellText.match(/^(\d{1,3}(?:,\d{3})*)$/);
+      if (pureNumberMatch) {
+        fans = parseInt(pureNumberMatch[1].replace(/,/g, ''), 10) || 0;
+        break;
+      }
+      
+      // 匹配数字+"万"的格式（如"1.07万"、"10万"）
+      const wanMatch = cellText.match(/^([\d.]+)万$/);
+      if (wanMatch) {
+        const num = parseFloat(wanMatch[1]);
+        fans = Math.round(num * 10000); // 转换为实际数字
+        break;
+      }
+      
+      // 匹配数字+"千"的格式（如"1.5千"）
+      const qianMatch = cellText.match(/^([\d.]+)千$/);
+      if (qianMatch) {
+        const num = parseFloat(qianMatch[1]);
+        fans = Math.round(num * 1000);
+        break;
+      }
+      
+      // 匹配简单数字（不包含其他字符）
+      const simpleMatch = cellText.match(/^(\d+)$/);
+      if (simpleMatch) {
+        fans = parseInt(simpleMatch[1], 10) || 0;
+        break;
       }
     }
 
