@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抖音精选联盟达人信息抓取</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>达人信息抓取</h1>
+    </header>
+
+    <div class="stats">
+      <div class="stat-item">
+        <span class="stat-label">已抓取：</span>
+        <span class="stat-value" id="dataCount">0</span>
+        <span class="stat-unit">条</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">页面行数：</span>
+        <span class="stat-value" id="pageRowCount">-</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="extractBtn" class="btn btn-primary">开始抓取</button>
+      <button id="viewDataBtn" class="btn btn-secondary">查看数据</button>
+      <button id="exportBtn" class="btn btn-secondary">导出数据</button>
+      <button id="viewLogsBtn" class="btn btn-secondary">查看日志</button>
+      <button id="clearBtn" class="btn btn-danger">清空数据</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="data-list" id="dataList" style="display: none;">
+      <h3>数据列表</h3>
+      <div class="list-container" id="listContainer"></div>
+      <div class="list-actions">
+        <button id="closeListBtn" class="btn btn-secondary">关闭列表</button>
+      </div>
+    </div>
+
+    <div class="logs-view" id="logsView" style="display: none;">
+      <h3>日志记录</h3>
+      <div class="logs-actions">
+        <button id="exportLogsBtn" class="btn btn-secondary">导出日志</button>
+        <button id="clearLogsBtn" class="btn btn-danger">清空日志</button>
+        <button id="closeLogsBtn" class="btn btn-secondary">关闭日志</button>
+      </div>
+      <div class="logs-container" id="logsContainer"></div>
+    </div>
+  </div>
+
+  <script src="../utils/logger.js"></script>
+  <script src="../utils/storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

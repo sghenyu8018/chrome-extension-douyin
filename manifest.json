@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "抖音精选联盟达人信息抓取",
+  "version": "1.0.0",
+  "description": "从抖音精选联盟页面提取达人信息并存储到本地",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://buyin.jinritemai.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://buyin.jinritemai.com/dashboard/servicehall/daren-square*"],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background/background.js"
+  }
+}
