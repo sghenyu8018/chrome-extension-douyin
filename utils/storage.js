@@ -177,7 +177,7 @@ class Storage {
     }
 
     // 获取所有字段名
-    const headers = ['id', 'name', 'fans', 'category', 'region', 'priceRange', 'tags', 'avatar', 'contactAvailable', 'replyRate', 'capturedAt'];
+    const headers = ['id', 'name', 'fans', 'category', 'style', 'region', 'priceRange', 'liveSalesTotal', 'imageSalesTotal', 'videoSalesTotal', 'showcaseSalesTotal', 'tags', 'avatar', 'contactAvailable', 'replyRate', 'capturedAt'];
     
     // CSV头部
     const csvRows = [headers.join(',')];

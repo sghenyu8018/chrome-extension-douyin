@@ -57,45 +57,88 @@ function extractDarenData(row) {
     // 提取类别和地区
     const descElement = row.querySelector('._daren-cell-desc');
     let category = '';
+    let style = '';  // 风格
     let region = '';
+    
     if (descElement) {
-      const textContent = descElement.textContent;
-      const parts = textContent.split('·');
-      if (parts.length === 2) {
-        category = parts[0].trim();
-        region = parts[1].trim();
-      } else {
-        category = textContent.trim();
+      // 获取所有span元素
+      const spans = Array.from(descElement.querySelectorAll('span')).map(s => s.textContent.trim()).filter(s => s);
+      
+      // 查找包含"·"的span，这个通常是地区信息（如"江苏·南京"）
+      const regionSpan = spans.find(s => s.includes('·'));
+      if (regionSpan) {
+        region = regionSpan.trim();
+      }
+      
+      // 所有不包含"·"的span应该是类别信息，用"/"连接
+      const categorySpans = spans.filter(s => !s.includes('·'));
+      if (categorySpans.length > 0) {
+        // 将类别span合并，用"/"分隔
+        category = categorySpans.join('/');
+      }
+      
+      // 如果没有找到region但有包含地区的文本，尝试从整个文本中提取
+      if (!region) {
+        const textContent = descElement.textContent.trim();
+        // 查找包含"·"的部分
+        const regionMatch = textContent.match(/([^·]+·[^·]+)/);
+        if (regionMatch) {
+          region = regionMatch[1].trim();
+        }
       }
     }
 
-    // 提取粉丝数
-    const cells = row.querySelectorAll('td.auxo-table-cell');
+    // 提取所有表格单元格
+    const cells = Array.from(row.querySelectorAll('td.auxo-table-cell'));
+    
+    // 提取粉丝数（通常是第一个数字列，不包含¥符号，可能包含ff-barlow类）
     let fans = 0;
-    if (cells.length > 1) {
-      for (let i = 1; i < Math.min(3, cells.length); i++) {
-        const cellText = cells[i].textContent.trim();
-        const fanMatch = cellText.match(/^(\d+)$/);
-        if (fanMatch && !cellText.includes('¥') && !cellText.includes('-')) {
-          fans = parseInt(fanMatch[1], 10) || 0;
+    // 跳过固定列（选择框列和达人信息列），从第2个单元格开始
+    // 粉丝数通常在达人信息列之后的第一个数字列
+    for (let i = 2; i < Math.min(10, cells.length); i++) {
+      const cell = cells[i];
+      const cellText = cell.textContent.trim();
+      
+      // 检查是否是纯数字或包含数字但没有¥符号、没有"-"符号、没有"万"字
+      if (cellText && !cellText.includes('¥') && !cellText.includes('-') && !cellText.includes('万')) {
+        // 匹配纯数字，可能包含逗号分隔符
+        const fanMatch = cellText.match(/^(\d{1,3}(?:,\d{3})*)$/);
+        if (fanMatch) {
+          // 移除逗号并转换为数字
+          fans = parseInt(fanMatch[1].replace(/,/g, ''), 10) || 0;
+          break;
+        }
+        // 也尝试匹配没有逗号的纯数字
+        const simpleMatch = cellText.match(/^(\d+)$/);
+        if (simpleMatch) {
+          fans = parseInt(simpleMatch[1], 10) || 0;
           break;
         }
       }
     }
 
-    // 提取价格范围
-    const priceRanges = [];
-    const priceElements = row.querySelectorAll('span.prefix');
-    priceElements.forEach(prefixEl => {
-      const parent = prefixEl.parentElement;
-      if (parent && parent.textContent.includes('¥')) {
-        const priceText = parent.textContent.trim();
-        if (priceText && !priceRanges.includes(priceText)) {
-          priceRanges.push(priceText);
+    // 提取所有价格相关的单元格（包含¥的元素）
+    const priceCells = [];
+    cells.forEach((cell, index) => {
+      const pricePrefix = cell.querySelector('span.prefix');
+      if (pricePrefix && cell.textContent.includes('¥')) {
+        const priceText = cell.textContent.trim();
+        if (priceText && priceText !== '-') {
+          priceCells.push({
+            index: index,
+            text: priceText
+          });
         }
       }
     });
-    const priceRange = priceRanges[0] || '-';
+
+    // 根据用户提供的信息，价格列的顺序大致是：
+    // 销售总额（priceRange）、直播销售总额、图文销售总额、视频销售总额、橱窗销售总额
+    const priceRange = priceCells[0]?.text || '-';           // 销售总额
+    const liveSalesTotal = priceCells[1]?.text || '-';       // 直播销售总额
+    const imageSalesTotal = priceCells[2]?.text || '-';      // 图文销售总额
+    const videoSalesTotal = priceCells[3]?.text || '-';      // 视频销售总额
+    const showcaseSalesTotal = priceCells[4]?.text || '-';   // 橱窗销售总额
 
     // 提取标签
     const tags = [];
@@ -131,8 +174,13 @@ function extractDarenData(row) {
       name: name,
       fans: fans,
       category: category,
+      style: style,
       region: region,
       priceRange: priceRange,
+      liveSalesTotal: liveSalesTotal,
+      imageSalesTotal: imageSalesTotal,
+      videoSalesTotal: videoSalesTotal,
+      showcaseSalesTotal: showcaseSalesTotal,
       tags: tags,
       avatar: avatar,
       contactAvailable: contactAvailable,

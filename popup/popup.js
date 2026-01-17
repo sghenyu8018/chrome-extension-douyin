@@ -61,7 +61,7 @@ function getStorage() {
         const self = getStorage();
         const data = self.getAll();
         if (data.length === 0) return '';
-        const headers = ['id', 'name', 'fans', 'category', 'region', 'priceRange', 'tags', 'avatar', 'contactAvailable', 'replyRate', 'capturedAt'];
+        const headers = ['id', 'name', 'fans', 'category', 'style', 'region', 'priceRange', 'liveSalesTotal', 'imageSalesTotal', 'videoSalesTotal', 'showcaseSalesTotal', 'tags', 'avatar', 'contactAvailable', 'replyRate', 'capturedAt'];
         const rows = [headers.join(',')];
         data.forEach(item => {
           const row = headers.map(h => {
@@ -208,8 +208,12 @@ function viewData() {
       <div class="data-item-info">
         <span>粉丝: ${item.fans || 0}</span>
         <span>类别: ${item.category || '-'}</span>
+        ${item.style ? `<span>风格: ${item.style}</span>` : ''}
         <span>地区: ${item.region || '-'}</span>
-        <span>价格: ${item.priceRange || '-'}</span>
+        <span>销售总额: ${item.priceRange || '-'}</span>
+        ${item.liveSalesTotal && item.liveSalesTotal !== '-' ? `<span>直播销售: ${item.liveSalesTotal}</span>` : ''}
+        ${item.videoSalesTotal && item.videoSalesTotal !== '-' ? `<span>视频销售: ${item.videoSalesTotal}</span>` : ''}
+        ${item.showcaseSalesTotal && item.showcaseSalesTotal !== '-' ? `<span>橱窗销售: ${item.showcaseSalesTotal}</span>` : ''}
         <span>标签: ${(item.tags || []).join(', ') || '-'}</span>
       </div>
     `;
