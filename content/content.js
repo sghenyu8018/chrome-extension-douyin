@@ -7,6 +7,15 @@
 // 注意：在content script中需要通过消息传递或直接内联代码
 // 数据提取函数 extractDarenData 和 extractAllDarenData 由 utils/dataExtractor.js 提供
 
+// 创建日志记录器实例
+// Logger 类由 utils/logger.js 提供（在 manifest.json 中已加载）
+const logger = typeof Logger !== 'undefined' ? new Logger('content') : {
+  debug: (msg, data) => console.debug('[content]', msg, data || ''),
+  info: (msg, data) => console.info('[content]', msg, data || ''),
+  warn: (msg, data) => console.warn('[content]', msg, data || ''),
+  error: (msg, data) => console.error('[content]', msg, data || '')
+};
+
 /**
  * 等待页面加载完成后提取数据
  */
@@ -15,6 +24,7 @@ async function waitAndExtract() {
     // 使用Promise等待表格数据加载完成
     // new Promise会创建一个定时器，每200毫秒检查一次页面中是否存在<tr data-row-key>元素，这代表达人数据表格已经渲染
     // 如果找到了数据行，立即清除定时器并resolve，继续后续提取流程
+    // Promise 是 JavaScript 提供的一种异步编程解决方案，用来表示一个可能还没完成但将来会完成的操作。当你 new Promise 时，你创建了一个新的Promise实例，需要提供一个 executor 函数（如这里的 resolve），它会在操作完成时“兑现”（resolve）或“拒绝”（reject）。
     await new Promise((resolve) => {
       // 定期检查表格行是否加载
       const checkInterval = setInterval(() => {
@@ -23,9 +33,11 @@ async function waitAndExtract() {
         // 通过 document.querySelectorAll 查找所有属性为 data-row-key 的 tr 元素（达人表格行）。
         const rows = document.querySelectorAll('tr[data-row-key]');
         if (rows.length > 0) {
-          // 如果已找到数据行，停止定时检查，认为已加载完成
+          // 取消已找到数据行时的200ms延迟，直接继续后续操作
           clearInterval(checkInterval);
-          resolve();
+          setTimeout(() => {
+            resolve();
+          }, 200);
         }
       }, 200); // 每200ms检查一次
 

@@ -4,7 +4,14 @@
  */
 
 // 日志记录器实例
-const logger = new Logger('popup');
+// logger实例来自于 utils/logger.js，在popup.html中通过 <script src="../utils/logger.js"></script> 引入后，全局可用
+// 检查 Logger 是否可用，避免重复声明错误
+const logger = typeof Logger !== 'undefined' ? new Logger('popup') : {
+  debug: (msg, data) => console.debug('[popup]', msg, data || ''),
+  info: (msg, data) => console.info('[popup]', msg, data || ''),
+  warn: (msg, data) => console.warn('[popup]', msg, data || ''),
+  error: (msg, data) => console.error('[popup]', msg, data || '')
+};
 
 // 获取存储实例
 function getStorage() {
@@ -95,9 +102,17 @@ const listContainer = document.getElementById('listContainer');
 const logsContainer = document.getElementById('logsContainer');
 
 // 显示状态消息
+/**
+ * 在状态栏显示消息，并自动隐藏
+ * @param {string} message - 要显示的消息文本
+ * @param {string} [type='info'] - 消息类型, 如: 'info', 'error', 'success'
+ */
 function showStatus(message, type = 'info') {
+  // 设置状态栏文本内容
   statusDiv.textContent = message;
+  // 设置状态栏样式，包括显示(show)和类型(如: status show error)
   statusDiv.className = `status show ${type}`;
+  // 3秒后自动移除'show'和类型, 恢复为默认的'status'，从而实现动画隐藏效果
   setTimeout(() => {
     statusDiv.className = 'status';
   }, 3000);
@@ -114,15 +129,31 @@ function updateStats() {
 }
 
 // 获取页面信息
+/**
+ * 获取当前活动标签页的页面信息，并更新页面的行数显示
+ * 该函数会异步请求内容脚本，获取当前页面的可用数据行数量
+ */
 async function getPageInfo() {
   try {
+    // 获取当前窗口中处于激活状态的标签页
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    chrome.tabs.sendMessage(tab.id, { action: 'getPageInfo' }, (response) => {
-      if (response && response.success) {
-        pageRowCountSpan.textContent = response.rowCount || 0;
+
+    // 发送消息到内容脚本，请求获取页面信息
+    // 消息格式: { action: 'getPageInfo' }
+    chrome.tabs.sendMessage(
+      tab.id, // 目标标签页ID
+      { action: 'getPageInfo' }, // 发送的消息对象，约定action为'getPageInfo'
+      (response) => { // 消息响应的回调
+        // 检查响应对象是否存在且success为true
+        if (response && response.success) {
+          // 从响应中获取行数，否则为0，更新到页面对应的span元素
+          pageRowCountSpan.textContent = response.rowCount || 0;
+        }
+        // 如果响应失败，不做特殊处理(也可在此处增加错误提示)
       }
-    });
+    );
   } catch (error) {
+    // 捕获整个流程中的异常，并写入日志
     logger.error('获取页面信息失败', error);
   }
 }
@@ -135,18 +166,26 @@ async function extractData() {
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+    logger.info('tab.id', tab.id);
     if (!tab.url || !tab.url.includes('buyin.jinritemai.com/dashboard/servicehall/daren-square')) {
       showStatus('请先打开抖音精选联盟达人广场页面', 'error');
       extractBtn.disabled = false;
       return;
     }
 
+    // 发送消息到内容脚本，请求开始抓取数据
+    // chrome 是谷歌浏览器（Google Chrome）扩展程序环境下提供的全局对象，允许开发者调用 Chrome 提供的扩展API。
+    // 下面这句代码的作用是向指定标签页（tab.id）注入消息（action: 'extractData'），并通过回调处理来自内容脚本的响应。
+    // 这里注入的不是一个函数extractData，而是发送一条action为'extractData'的消息给content script，
+    // 内容脚本收到这个消息后会执行对应的数据抓取函数，然后返回结果给popup页面。
     chrome.tabs.sendMessage(tab.id, { action: 'extractData' }, async (response) => {
+          // 一旦收到内容脚本的响应，重新启用抓取按钮
       extractBtn.disabled = false;
 
+      // 检查 Chrome Runtime 是否返回错误（如脚本注入失败或页面无内容脚本等）
       if (chrome.runtime.lastError) {
         const errorMsg = chrome.runtime.lastError.message;
+        // 显示错误状态，并日志记录错误详情
         showStatus(`错误: ${errorMsg}`, 'error');
         logger.error('发送消息失败', { error: errorMsg });
         return;
@@ -373,7 +412,10 @@ document.getElementById('exportLogsBtn').addEventListener('click', exportLogs);
 document.getElementById('clearLogsBtn').addEventListener('click', clearLogs);
 
 // 初始化
+// 当弹窗的DOM内容完全加载并解析完成后，执行以下初始化逻辑
 document.addEventListener('DOMContentLoaded', () => {
+  // 更新统计信息（如已抓取数据条数、页面行数等）
   updateStats();
+  // 记录日志，表示弹窗页面已成功加载
   logger.info('Popup已加载');
 });

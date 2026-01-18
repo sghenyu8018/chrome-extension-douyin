@@ -20,10 +20,6 @@ function extractDarenData(row) {
     const nameElement = row.querySelector('.index-module__title___MZNea');
     const name = nameElement ? nameElement.textContent.trim() : '';
 
-    // 提取头像
-    const avatarImg = row.querySelector('img[alt="达人头像"]');
-    const avatar = avatarImg ? avatarImg.src : '';
-
     // 提取类别和地区
     const descElement = row.querySelector('._daren-cell-desc');
     let category = '';
@@ -94,14 +90,6 @@ function extractDarenData(row) {
         break;
       }
       
-      // 匹配数字+"千"的格式（如"1.5千"）
-      const qianMatch = cellText.match(/^([\d.]+)千$/);
-      if (qianMatch) {
-        const num = parseFloat(qianMatch[1]);
-        fans = Math.round(num * 1000);
-        break;
-      }
-      
       // 匹配简单数字（不包含其他字符）
       const simpleMatch = cellText.match(/^(\d+)$/);
       if (simpleMatch) {
@@ -131,8 +119,8 @@ function extractDarenData(row) {
     // TODO: 修改价格列顺序
     const priceRange = priceCells[0]?.text || '-';           // 销售总额
     const liveSalesTotal = priceCells[1]?.text || '-';       // 直播销售总额
-    const imageSalesTotal = priceCells[2]?.text || '-';      // 图文销售总额
-    const videoSalesTotal = priceCells[3]?.text || '-';      // 视频销售总额
+    const videoSalesTotal = priceCells[2]?.text || '-';      // 视频销售总额
+    const imageSalesTotal = priceCells[3]?.text || '-';      // 图文销售总额
     const showcaseSalesTotal = priceCells[4]?.text || '-';   // 橱窗销售总额
 
     // 提取标签
@@ -146,6 +134,7 @@ function extractDarenData(row) {
     });
 
     // 判断是否有联系方式
+    console.log('tags', tags);
     const contactAvailable = tags.some(tag => 
       tag.includes('联系方式') || tag.includes('联系')
     );
@@ -177,7 +166,6 @@ function extractDarenData(row) {
       videoSalesTotal: videoSalesTotal,
       showcaseSalesTotal: showcaseSalesTotal,
       tags: tags,
-      avatar: avatar,
       contactAvailable: contactAvailable,
       replyRate: replyRate,
       capturedAt: new Date().toISOString()

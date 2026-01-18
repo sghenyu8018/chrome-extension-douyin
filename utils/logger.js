@@ -171,8 +171,11 @@ class Logger {
 
 // 导出Logger类
 // 浏览器环境：设置为全局变量
+// 只在不存在时才设置，避免覆盖（如果脚本被加载多次）
 if (typeof window !== 'undefined') {
-  window.Logger = Logger;
+  if (!window.Logger) {
+    window.Logger = Logger;
+  }
 }
 
 // Node.js环境

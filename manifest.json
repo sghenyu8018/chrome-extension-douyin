@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "抖音精选联盟达人信息抓取",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "从抖音精选联盟页面提取达人信息并存储到本地",
   "permissions": [
     "storage",
@@ -27,6 +27,7 @@
     {
       "matches": ["https://buyin.jinritemai.com/dashboard/servicehall/daren-square*"],
       "js": [
+        "utils/logger.js",
         "utils/dataExtractor.js",
         "content/content.js"
       ],

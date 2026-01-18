@@ -220,17 +220,35 @@ class Storage {
   }
 }
 
-// 创建单例实例
-const storage = new Storage();
+// 创建单例实例并导出
+// 使用 IIFE 避免变量声明冲突
+(function() {
+  'use strict';
+  
+  // 检查是否已经存在，避免重复创建
+  let storageInstance;
+  if (typeof window !== 'undefined' && window.storage) {
+    // 如果已存在，使用现有的实例
+    storageInstance = window.storage;
+  } else {
+    // 如果不存在，创建新实例
+    storageInstance = new Storage();
+  }
 
-// 导出Storage类和实例
-// 浏览器环境：设置为全局变量
-if (typeof window !== 'undefined') {
-  window.Storage = Storage;
-  window.storage = storage;
-}
+  // 导出Storage类和实例
+  // 浏览器环境：设置为全局变量
+  if (typeof window !== 'undefined') {
+    // 只在不存在时才设置，避免覆盖
+    if (!window.Storage) {
+      window.Storage = Storage;
+    }
+    if (!window.storage) {
+      window.storage = storageInstance;
+    }
+  }
 
-// Node.js环境
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { Storage, storage };
-}
+  // Node.js环境
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Storage, storage: storageInstance };
+  }
+})();
