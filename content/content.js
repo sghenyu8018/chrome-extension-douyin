@@ -5,21 +5,29 @@
 
 // 引入日志模块和数据提取工具
 // 注意：在content script中需要通过消息传递或直接内联代码
+// 数据提取函数 extractDarenData 和 extractAllDarenData 由 utils/dataExtractor.js 提供
 
 /**
  * 等待页面加载完成后提取数据
  */
 async function waitAndExtract() {
   try {
-    // 等待表格数据加载
+    // 使用Promise等待表格数据加载完成
+    // new Promise会创建一个定时器，每200毫秒检查一次页面中是否存在<tr data-row-key>元素，这代表达人数据表格已经渲染
+    // 如果找到了数据行，立即清除定时器并resolve，继续后续提取流程
     await new Promise((resolve) => {
+      // 定期检查表格行是否加载
       const checkInterval = setInterval(() => {
+        // 查询页面所有data-row-key属性的tr行，代表达人数据行
+        // document 是指当前内容脚本所运行的网页的 DOM（文档对象模型）。
+        // 通过 document.querySelectorAll 查找所有属性为 data-row-key 的 tr 元素（达人表格行）。
         const rows = document.querySelectorAll('tr[data-row-key]');
         if (rows.length > 0) {
+          // 如果已找到数据行，停止定时检查，认为已加载完成
           clearInterval(checkInterval);
           resolve();
         }
-      }, 200);
+      }, 200); // 每200ms检查一次
 
       // 10秒超时
       setTimeout(() => {
@@ -35,230 +43,46 @@ async function waitAndExtract() {
   }
 }
 
-/**
- * 提取单个达人行的数据
- */
-function extractDarenData(row) {
-  try {
-    if (!row || !row.getAttribute('data-row-key')) {
-      return null;
-    }
-
-    const id = row.getAttribute('data-row-key');
-    
-    // 提取名称
-    const nameElement = row.querySelector('.index-module__title___MZNea');
-    const name = nameElement ? nameElement.textContent.trim() : '';
-
-    // 提取头像
-    const avatarImg = row.querySelector('img[alt="达人头像"]');
-    const avatar = avatarImg ? avatarImg.src : '';
-
-    // 提取类别和地区
-    const descElement = row.querySelector('._daren-cell-desc');
-    let category = '';
-    let style = '';  // 风格
-    let region = '';
-    
-    if (descElement) {
-      // 获取所有span元素
-      const spans = Array.from(descElement.querySelectorAll('span')).map(s => s.textContent.trim()).filter(s => s);
-      
-      // 查找包含"·"的span，这个通常是地区信息（如"江苏·南京"）
-      const regionSpan = spans.find(s => s.includes('·'));
-      if (regionSpan) {
-        region = regionSpan.trim();
-      }
-      
-      // 所有不包含"·"的span应该是类别信息，用"/"连接
-      const categorySpans = spans.filter(s => !s.includes('·'));
-      if (categorySpans.length > 0) {
-        // 将类别span合并，用"/"分隔
-        category = categorySpans.join('/');
-      }
-      
-      // 如果没有找到region但有包含地区的文本，尝试从整个文本中提取
-      if (!region) {
-        const textContent = descElement.textContent.trim();
-        // 查找包含"·"的部分
-        const regionMatch = textContent.match(/([^·]+·[^·]+)/);
-        if (regionMatch) {
-          region = regionMatch[1].trim();
-        }
-      }
-    }
-
-    // 提取所有表格单元格
-    const cells = Array.from(row.querySelectorAll('td.auxo-table-cell'));
-    
-    // 提取粉丝数（通常是第一个数字列，不包含¥符号，可能包含"万"单位）
-    let fans = 0;
-    // 跳过固定列（选择框列和达人信息列），从第2个单元格开始
-    // 粉丝数通常在达人信息列之后的第一个数字列，带有ff-barlow类
-    for (let i = 2; i < Math.min(10, cells.length); i++) {
-      const cell = cells[i];
-      const cellText = cell.textContent.trim();
-      
-      // 检查是否包含¥符号，如果包含则跳过（这是价格列）
-      if (cellText && cellText.includes('¥')) {
-        continue;
-      }
-      
-      // 检查是否包含"-"符号，如果包含则跳过（这是价格范围列）
-      if (cellText && cellText.includes('-') && !cellText.match(/[\d.]+万?[\s-]+[\d.]+万?/)) {
-        continue;
-      }
-      
-      // 匹配纯数字（可能包含逗号）
-      const pureNumberMatch = cellText.match(/^(\d{1,3}(?:,\d{3})*)$/);
-      if (pureNumberMatch) {
-        fans = parseInt(pureNumberMatch[1].replace(/,/g, ''), 10) || 0;
-        break;
-      }
-      
-      // 匹配数字+"万"的格式（如"1.07万"、"10万"）
-      const wanMatch = cellText.match(/^([\d.]+)万$/);
-      if (wanMatch) {
-        const num = parseFloat(wanMatch[1]);
-        fans = Math.round(num * 10000); // 转换为实际数字
-        break;
-      }
-      
-      // 匹配数字+"千"的格式（如"1.5千"）
-      const qianMatch = cellText.match(/^([\d.]+)千$/);
-      if (qianMatch) {
-        const num = parseFloat(qianMatch[1]);
-        fans = Math.round(num * 1000);
-        break;
-      }
-      
-      // 匹配简单数字（不包含其他字符）
-      const simpleMatch = cellText.match(/^(\d+)$/);
-      if (simpleMatch) {
-        fans = parseInt(simpleMatch[1], 10) || 0;
-        break;
-      }
-    }
-
-    // 提取所有价格相关的单元格（包含¥的元素）
-    const priceCells = [];
-    cells.forEach((cell, index) => {
-      const pricePrefix = cell.querySelector('span.prefix');
-      if (pricePrefix && cell.textContent.includes('¥')) {
-        const priceText = cell.textContent.trim();
-        if (priceText && priceText !== '-') {
-          priceCells.push({
-            index: index,
-            text: priceText
-          });
-        }
-      }
-    });
-
-    // 根据用户提供的信息，价格列的顺序大致是：
-    // 销售总额（priceRange）、直播销售总额、图文销售总额、视频销售总额、橱窗销售总额
-    const priceRange = priceCells[0]?.text || '-';           // 销售总额
-    const liveSalesTotal = priceCells[1]?.text || '-';       // 直播销售总额
-    const imageSalesTotal = priceCells[2]?.text || '-';      // 图文销售总额
-    const videoSalesTotal = priceCells[3]?.text || '-';      // 视频销售总额
-    const showcaseSalesTotal = priceCells[4]?.text || '-';   // 橱窗销售总额
-
-    // 提取标签
-    const tags = [];
-    const tagElements = row.querySelectorAll('.auxo-sp-tag .sp-tag-content');
-    tagElements.forEach(tagEl => {
-      const tagText = tagEl.textContent.trim();
-      if (tagText) {
-        tags.push(tagText);
-      }
-    });
-
-    // 判断是否有联系方式
-    const contactAvailable = tags.some(tag => 
-      tag.includes('联系方式') || tag.includes('联系')
-    );
-
-    // 提取回复率
-    let replyRate = '';
-    const replyRateTag = tags.find(tag => 
-      tag.includes('回复率') || tag.includes('回复')
-    );
-    if (replyRateTag) {
-      const rateMatch = replyRateTag.match(/(\d+(?:\.\d+)?%)/);
-      if (rateMatch) {
-        replyRate = rateMatch[1];
-      } else {
-        replyRate = replyRateTag;
-      }
-    }
-
-    return {
-      id: id,
-      name: name,
-      fans: fans,
-      category: category,
-      style: style,
-      region: region,
-      priceRange: priceRange,
-      liveSalesTotal: liveSalesTotal,
-      imageSalesTotal: imageSalesTotal,
-      videoSalesTotal: videoSalesTotal,
-      showcaseSalesTotal: showcaseSalesTotal,
-      tags: tags,
-      avatar: avatar,
-      contactAvailable: contactAvailable,
-      replyRate: replyRate,
-      capturedAt: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error('提取达人数据失败:', error);
-    return null;
-  }
-}
-
-/**
- * 提取当前页面的所有达人数据
- */
-function extractAllDarenData() {
-  const darenList = [];
-  
-  try {
-    const rows = document.querySelectorAll('tr[data-row-key]');
-    
-    rows.forEach(row => {
-      const darenData = extractDarenData(row);
-      if (darenData && darenData.id) {
-        darenList.push(darenData);
-      }
-    });
-  } catch (error) {
-    console.error('提取所有达人数据失败:', error);
-  }
-
-  return darenList;
-}
 
 // 监听来自popup或background的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'extractData') {
     // 异步提取数据
-    waitAndExtract().then(data => {
-      sendResponse({ success: true, data: data });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
+    // 异步等待页面数据抓取函数waitAndExtract的执行结果
+    // waitAndExtract是一个Promise，处理页面动态数据渲染异步情况
+    waitAndExtract()
+      .then(data => {
+        // 成功提取数据后，通过sendResponse将结果响应给popup脚本
+        // { success: true, data: data }  其中data为提取到的达人数据数组
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        // 如果提取过程中出错，将错误信息通过sendResponse反馈
+        // { success: false, error: error.message }
+        sendResponse({ success: false, error: error.message });
+      });
     
     // 返回true表示将异步发送响应
     return true;
   }
 
+  // 处理来自 popup 或 background 的 "getPageInfo" 请求
+  // 该消息的目的是让 popup 快速获取页面上达人表格的当前行数等信息（不需要全部采集数据）
   if (request.action === 'getPageInfo') {
+    // 查询页面所有带有 data-row-key 属性的 <tr> 元素（即达人表格的每一行，通常一行表示一个达人）
+    // 这是抖音精选联盟达人广场列表的标准结构，根据 className 和属性设计做适应性抓取
     const rowCount = document.querySelectorAll('tr[data-row-key]').length;
+    logger.info('rowCount', rowCount);
+    logger.info('window.location.href', window.location.href);
+    // 携带页面当前的 URL 方便 popup/后台判断是否在正确的页面
+    // 将获取到的信息通过 sendResponse 返回给发送消息方
     sendResponse({ 
-      success: true, 
-      rowCount: rowCount,
-      url: window.location.href
+      success: true,                // 表明操作成功
+      rowCount: rowCount,           // 当前页面中达人数据行的数量
+      url: window.location.href     // 页面当前地址，可以用作二次校验
     });
+
+    // 返回 true，表明是异步响应（虽然这里其实是同步，但用于规避潜在异步用例）
     return true;
   }
 });

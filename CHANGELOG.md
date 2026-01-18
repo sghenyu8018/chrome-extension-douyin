@@ -5,6 +5,18 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.0] - 2026-01-17
+
+### 重构
+- 将数据提取功能从 `content/content.js` 拆分到独立的 `utils/dataExtractor.js` 模块
+- `extractDarenData` 和 `extractAllDarenData` 函数现在统一由 `dataExtractor.js` 提供
+- 更新 `manifest.json`，在 content_scripts 中按顺序加载 `dataExtractor.js` 和 `content.js`
+
+### 改进
+- 提升代码模块化和可维护性
+- 数据提取逻辑集中管理，便于后续修改和扩展
+- 改善代码组织结构，职责划分更清晰
+
 ## [1.1.1] - 2026-01-17
 
 ### 修复
