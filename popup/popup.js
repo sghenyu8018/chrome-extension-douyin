@@ -24,6 +24,8 @@ function getStorage() {
   return {
       getAll: () => {
         try {
+          // 从 localStorage 中获取 key 为 'douyin_daren_data' 的数据字符串
+          // 如果本地存储中没有该 key，则返回 null
           const data = localStorage.getItem('douyin_daren_data');
           return data ? JSON.parse(data) : [];
         } catch {
@@ -32,6 +34,14 @@ function getStorage() {
       },
       saveAll: (data) => {
         try {
+          /**
+           * 将达人数据以JSON字符串形式保存到本地存储（localStorage）。
+           * 键名 'douyin_daren_data'，value为data序列化后的字符串。
+           * 字段解释：
+           *   id:               唯一标识，例如达人ID
+           */
+          // localStorage.setItem 用于将指定键的数据（这里是 'douyin_daren_data'）保存到浏览器的本地存储（localStorage）中，值需要为字符串格式。
+          // 本例中，将 data 对象序列化为 JSON 字符串后存储
           localStorage.setItem('douyin_daren_data', JSON.stringify(data));
           return true;
         } catch {
@@ -201,10 +211,19 @@ async function extractData() {
         }
 
         // 保存数据
+        // 获取存储（Storage）实例，确保后续可以调用自定义存储方法
+        // getStorage() 会返回当前用于达人数据存储的 Storage 实例对象。
+        // Storage 实例可以用来进行数据的 增、删、改、查 以及批量添加等操作。
+        // 比如 storageInstance.addBatch(data) 可用于批量添加达人数据到本地存储，
+        // storageInstance.getAll() 可获取所有已保存的数据条目。
+        // 详细操作方法由 utils/storage.js 中 Storage 类实现。
         const storageInstance = getStorage();
+        // 检查存储实例是否已正确初始化，并且实现了 addBatch 批量添加方法
         if (storageInstance && storageInstance.addBatch) {
+          // 尝试将获取到的数据批量保存到本地存储
           const saved = storageInstance.addBatch(data);
           if (saved) {
+            // 保存成功，提示用户已成功抓取指定数量数据，并更新日志和统计信息
             showStatus(`成功抓取 ${data.length} 条数据`, 'success');
             logger.info('数据抓取成功', { count: data.length });
             updateStats();
@@ -237,25 +256,41 @@ function viewData() {
     return;
   }
 
+  // 清空列表容器内容，准备重新插入数据项
+  // 将列表容器（listContainer）中的所有HTML内容清空（即删除已有数据项）
+  // innerHTML 是 DOM 元素的一个属性，用于获取或设置元素的 HTML 内容。
+  // 这里把它设置为 ''（空字符串），表示“清空”该容器的内容。
   listContainer.innerHTML = '';
-  
+
+  // 只显示前50条数据，避免过多数据显示造成卡顿
   data.slice(0, 50).forEach((item, index) => {
+    // 创建数据项的父div
     const itemDiv = document.createElement('div');
     itemDiv.className = 'data-item';
+
+    // 组装数据项的HTML结构
+    // - 显示序号和达人名称，没有名称则显示“未命名”
+    // - 展示粉丝数、类别、风格（可选）、地区、销售总额等关键信息
+    // - 仅当相应销售数据存在且不为'-'时才添加对应内容
+    // - 标签为数组，展示为用逗号分隔的字符串，若无则显示'-'
     itemDiv.innerHTML = `
-      <div class="data-item-name">${index + 1}. ${item.name || '未命名'}</div>
+      <div class="data-item-name">
+        ${index + 1}. ${item.name || '未命名'}
+      </div>
       <div class="data-item-info">
         <span>粉丝: ${item.fans || 0}</span>
         <span>类别: ${item.category || '-'}</span>
         ${item.style ? `<span>风格: ${item.style}</span>` : ''}
         <span>地区: ${item.region || '-'}</span>
         <span>销售总额: ${item.priceRange || '-'}</span>
-        ${item.liveSalesTotal && item.liveSalesTotal !== '-' ? `<span>直播销售: ${item.liveSalesTotal}</span>` : ''}
-        ${item.videoSalesTotal && item.videoSalesTotal !== '-' ? `<span>视频销售: ${item.videoSalesTotal}</span>` : ''}
-        ${item.showcaseSalesTotal && item.showcaseSalesTotal !== '-' ? `<span>橱窗销售: ${item.showcaseSalesTotal}</span>` : ''}
+        ${item.liveSalesTotal && item.liveSalesTotal !== '-' ? `<span>直播销售总额: ${item.liveSalesTotal}</span>` : ''}
+        ${item.videoSalesTotal && item.videoSalesTotal !== '-' ? `<span>视频销售总额: ${item.videoSalesTotal}</span>` : ''}
+        ${item.imageSalesTotal && item.imageSalesTotal !== '-' ? `<span>图文销售总额: ${item.imageSalesTotal}</span>` : ''}
+        ${item.showcaseSalesTotal && item.showcaseSalesTotal !== '-' ? `<span>橱窗销售总额: ${item.showcaseSalesTotal}</span>` : ''}
         <span>标签: ${(item.tags || []).join(', ') || '-'}</span>
       </div>
     `;
+    // 将当前数据div添加到列表容器中
     listContainer.appendChild(itemDiv);
   });
 

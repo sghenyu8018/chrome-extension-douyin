@@ -117,11 +117,12 @@ function extractDarenData(row) {
     // 销售总额（priceRange）、直播销售总额、图文销售总额、视频销售总额、橱窗销售总额
     //此处顺序错误，应该按照实际顺序提取
     // TODO: 修改价格列顺序
-    const priceRange = priceCells[0]?.text || '-';           // 销售总额
-    const liveSalesTotal = priceCells[1]?.text || '-';       // 直播销售总额
-    const videoSalesTotal = priceCells[2]?.text || '-';      // 视频销售总额
-    const imageSalesTotal = priceCells[3]?.text || '-';      // 图文销售总额
-    const showcaseSalesTotal = priceCells[4]?.text || '-';   // 橱窗销售总额
+    // 允许'-'作为不存在的销售额，但不跳过这些项
+    const priceRange = priceCells[0] ? priceCells[0].text : '-';           // 销售总额
+    const liveSalesTotal = priceCells[1] ? priceCells[1].text : '-';       // 直播销售总额
+    const videoSalesTotal = priceCells[2] ? priceCells[2].text : '-';      // 视频销售总额
+    const imageSalesTotal = priceCells[3] ? priceCells[3].text : '-';      // 图文销售总额
+    const showcaseSalesTotal = priceCells[4] ? priceCells[4].text : '-';   // 橱窗销售总额
 
     // 提取标签
     const tags = [];
