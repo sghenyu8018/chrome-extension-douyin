@@ -98,26 +98,58 @@ function extractDarenData(row) {
       }
     }
 
-    // 提取所有价格相关的单元格（包含¥的元素）
+    // 提取所有价格相关的单元格
+    // 价格列的特征：包含 span.prefix（¥符号）或者值为"-"的文本单元格
+    // 策略：先找到所有包含价格前缀的单元格，确定价格列的范围，然后补充值为"-"的单元格
     const priceCells = [];
+    const priceIndices = []; // 记录所有价格列的索引
+    
+    // 第一步：找到所有包含价格前缀（¥符号）的单元格
     cells.forEach((cell, index) => {
       const pricePrefix = cell.querySelector('span.prefix');
-      if (pricePrefix && cell.textContent.includes('¥')) {
-        const priceText = cell.textContent.trim();
-        if (priceText && priceText !== '-') {
-          priceCells.push({
-            index: index,
-            text: priceText
-          });
-        }
+      if (pricePrefix) {
+        const priceText = cell.textContent.trim() || '-';
+        priceCells.push({
+          index: index,
+          text: priceText
+        });
+        priceIndices.push(index);
       }
     });
-
-    // 根据用户提供的信息，价格列的顺序大致是：
-    // 销售总额（priceRange）、直播销售总额、图文销售总额、视频销售总额、橱窗销售总额
-    //此处顺序错误，应该按照实际顺序提取
-    // TODO: 修改价格列顺序
-    // 允许'-'作为不存在的销售额，但不跳过这些项
+    
+    // 第二步：确定价格列的范围（第一个价格列到最后一个价格列之间的所有列）
+    if (priceIndices.length > 0) {
+      const firstPriceIndex = Math.min(...priceIndices);
+      const lastPriceIndex = Math.max(...priceIndices);
+      
+      // 在价格列范围内，找到所有值为"-"的单元格
+      cells.forEach((cell, index) => {
+        if (index >= firstPriceIndex && index <= lastPriceIndex) {
+          const cellText = cell.textContent.trim();
+          const hasPrefix = cell.querySelector('span.prefix');
+          const alreadyCaptured = priceCells.some(pc => pc.index === index);
+          
+          // 如果单元格值为"-"，没有prefix，且不在已捕获的列表中，则添加到价格列
+          if (cellText === '-' && !hasPrefix && !alreadyCaptured) {
+            priceCells.push({
+              index: index,
+              text: '-'
+            });
+          }
+        }
+      });
+    }
+    
+    // 第三步：按照在表格中的实际位置排序
+    priceCells.sort((a, b) => a.index - b.index);
+    
+    // 第四步：按照表格中的实际顺序分配
+    // 价格列的顺序是：
+    // 1. 销售总额（priceRange）
+    // 2. 直播销售总额（liveSalesTotal）
+    // 3. 视频销售总额（videoSalesTotal）
+    // 4. 图文销售总额（imageSalesTotal）
+    // 5. 橱窗销售总额（showcaseSalesTotal）
     const priceRange = priceCells[0] ? priceCells[0].text : '-';           // 销售总额
     const liveSalesTotal = priceCells[1] ? priceCells[1].text : '-';       // 直播销售总额
     const videoSalesTotal = priceCells[2] ? priceCells[2].text : '-';      // 视频销售总额
